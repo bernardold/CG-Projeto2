@@ -16,3 +16,6 @@ $ make
 $ make run
 ```
 
+## Controles
++ __Movimentar__ - Setas (Esquerda e Direita)
++ __Atirar__ - Barra de espaço
