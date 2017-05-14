@@ -15,8 +15,8 @@ using namespace std;
 #define SPACEBAR 32
 #define BULLET_AMOUNT 10
 #define BULLET_SPEED 15
-#define BULLET_WIDTH 4
-#define BULLET_HEIGHT 4
+#define BULLET_WIDTH 2
+#define BULLET_HEIGHT 6
 
 typedef struct {
     GLint active;
@@ -132,8 +132,9 @@ void display() {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     
-    glColor3f(1.0f, 1.0f, 1.0f);
+    glColor3f(0.0f, 1.0f, 0.0f);
     drawShip();
+    glColor3f(1.0f, 1.0f, 1.0f);
     drawBullets();
     
     glutPostRedisplay();    // Chama a funcao DISPLAY apos a atualizacao
