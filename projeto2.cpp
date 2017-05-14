@@ -13,7 +13,7 @@
 using namespace std;
 
 #define SPACEBAR 32
-#define BULLET_AMOUNT 8
+#define BULLET_AMOUNT 10
 #define BULLET_SPEED 15
 #define BULLET_WIDTH 4
 #define BULLET_HEIGHT 4
@@ -34,7 +34,7 @@ typedef struct {
     GLint posX;
     GLint posY;
 } Ship;
-Ship ship = {50, 30, 5, 500, 30};
+Ship ship = {50, 30, 15, 500, 30};
 
 typedef struct {
     GLsizei w, h;
