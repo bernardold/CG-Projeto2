@@ -1,3 +1,12 @@
+/*  
+*   Projeto 2 - CG
+*   
+*   Bernardo Duarte             8598861
+*   Giovani Ortolani Barbosa    8936648
+*   Giovanni Robira             8531887           
+*   Julia Minetto Macias        8937329
+*/
+
 #ifdef __APPLE__
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/gl.h>
