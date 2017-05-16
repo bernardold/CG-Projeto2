@@ -29,6 +29,8 @@ using namespace std;
 #define BULLET_HEIGHT 6
 
 GLuint tickCount = 0;
+GLint gameOver = 0, win = 0, lose = 0;
+
 
 typedef struct {
     GLint active;
@@ -220,13 +222,81 @@ void checkBulletAlienCollision() {
     }
 }
 
+GLint checkShipAlienCollision() {
+    for (int i = 0; i < (sizeof(aliens)/sizeof(aliens[0])); i++) {
+        for (int j = 0; j < (sizeof(aliens[i])/sizeof(aliens[i][0])); j++) {
+            if (aliens[i][j].alive) {
+                
+                if (aliens[i][j].y < ship.posY+ship.height) {
+                    // if alien right > ship left || alien left < ship right
+                    if ((aliens[i][j].x + aliens[i][j].width > ship.posX && aliens[i][j].x + aliens[i][j].width < ship.posX + ship.width) ||
+                        (aliens[i][j].x < ship.posX + ship.width && aliens[i][j].x > ship.posX)) {
+                        return 1;
+                    }
+                }
+                
+            }
+        }
+    }
+    
+    return 0;
+}
+
+GLint alienInvasion() {
+    for (int i = 0; i < (sizeof(aliens)/sizeof(aliens[0])); i++) {
+        for (int j = 0; j < (sizeof(aliens[i])/sizeof(aliens[i][0])); j++) {
+            if (aliens[i][j].alive) {
+                
+                if (aliens[i][j].y < 0) {
+                    return 1;
+                }
+                
+            }
+        }
+    }
+    
+    return 0;
+}
+
+GLint anyAlienAlive() {
+    for (int i = 0; i < (sizeof(aliens)/sizeof(aliens[0])); i++) {
+        for (int j = 0; j < (sizeof(aliens[i])/sizeof(aliens[i][0])); j++) {
+            if (aliens[i][j].alive) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+GLint checkEndGame() {
+    // Win conditions
+    if (!anyAlienAlive()){
+        win = 1;
+        cout << "You won the game!" << endl;
+        return 1;
+    }
+    
+    // Lose conditions
+    if (checkShipAlienCollision() || alienInvasion()) {
+        lose = 1;
+        cout << "You lose the game!" << endl;
+        return 1;
+    }
+    
+    return 0;
+}
+
 void tick(GLint value) {
-    tickCount++;
+    if (!gameOver) {
+        tickCount++;
     
-    moveBullet();
-    moveAliens();
-    checkBulletAlienCollision();
+        moveBullet();
+        moveAliens();
+        checkBulletAlienCollision();
     
+        gameOver = checkEndGame();
+    }
     glutPostRedisplay();
     glutTimerFunc(33, tick, value);      // 30 frames per second
     
@@ -249,19 +319,23 @@ void display() {
 }
 
 void onKeyPress(unsigned char key, int x, int y) {
-    if (key == SPACEBAR) {
-        shoot = 1;
+    if (!gameOver) {
+        if (key == SPACEBAR) {
+            shoot = 1;
+        }
     }
 }
 
 void onSpecialKeyPress(int key, int x, int y) {
-    if (key == GLUT_KEY_LEFT) {
-        ship.posX -= ship.speed;
-        if (ship.posX < 0) ship.posX = 0;
-    }
-    if (key == GLUT_KEY_RIGHT) {
-        ship.posX += ship.speed;
-        if (ship.posX > window.w - ship.width) ship.posX = window.w - ship.width;
+    if (!gameOver) {
+        if (key == GLUT_KEY_LEFT) {
+            ship.posX -= ship.speed;
+            if (ship.posX < 0) ship.posX = 0;
+        }
+        if (key == GLUT_KEY_RIGHT) {
+            ship.posX += ship.speed;
+            if (ship.posX > window.w - ship.width) ship.posX = window.w - ship.width;
+        }
     }
 }
 
