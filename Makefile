@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -std=c++11
+CFLAGS = -std=c++11 -o2
 PROG = projeto2
 SRCS = projeto2.cpp
 LIBS = -lGLU -lGL -lglut -lSOIL -lm -pthread

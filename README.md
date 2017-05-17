@@ -8,6 +8,11 @@ O objetivo do trabalho é recriar o clássico jogo Space Invaders em OpenGL.
 ```
 gcc
 OpenGL
+SOIL
+```
+A biblioteca SOIL pode ser obtida através do comando:
+```
+$ sudo apt-get install libsoil-dev
 ```
 
 ## Compilação e execução
