@@ -26,6 +26,7 @@ using namespace std;
 #define BULLET_AMOUNT 4
 #define BULLET_SPEED 15
 #define BULLET_COOLDOWN 10
+#define ENEMY_BULLET_COOLDOWN 30
 #define BULLET_WIDTH 2
 #define BULLET_HEIGHT 6
 
@@ -36,8 +37,10 @@ typedef struct {
     GLint active;
     GLint  x;
     GLint  y;
+    GLint speed;
 }  Bullet;
 Bullet bullets[BULLET_AMOUNT];
+Bullet enemyBullets[BULLET_AMOUNT];
 GLint shoot = 0;
 
 typedef struct {
@@ -57,10 +60,10 @@ typedef struct {
     GLint speed;
     GLint posX;
     GLint posY;
-    GLint canShoot;
+    GLint health;
 } Ship;
-Ship ship = {50, 30, 15, 500, 30, 1};
-GLuint lastShotTick = 0;
+Ship ship = {50, 30, 15, 500, 30, 3};
+GLuint lastShotTick = 0, lastEnemyShot = 0;
 
 typedef struct {
     GLsizei w, h;
@@ -69,72 +72,46 @@ Window window = {1024, 640};
 
 GLuint texture = 0;
 
+
+//void loadTexture(void) {
+//    texture = SOIL_load_OGL_texture(
+//                    "image1.png",
+//                    SOIL_LOAD_AUTO,
+//                    SOIL_CREATE_NEW_ID,
+//                    SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
+//                    );
+//
+//    if(texture == 0)
+//    {
+//        printf("SOIL loading error: '%s'\n", SOIL_last_result());
+//        exit(EXIT_FAILURE);
+//    }
+//
+//    glBindTexture(GL_TEXTURE_2D, texture); 
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+//}
+
+//void background(void) {
+
+//    glEnable(GL_TEXTURE_2D);
+//    glBindTexture(GL_TEXTURE_2D, texture);  // Define a textura corrente
+//
+//    glBegin(GL_QUADS);
+//        // TexCoord2i: Coord. dos pontos na textura
+//        // Vertex2i: Coord. dos pontos no poligono
+//        glTexCoord2i(0, 0); glVertex2i(0, 0);
+//        glTexCoord2i(1, 0); glVertex2i(window.w, 0);
+//        glTexCoord2i(1, 1); glVertex2i(window.w, window.h);
+//        glTexCoord2i(0, 1); glVertex2i(0, window.h);
+//    glEnd();
+//    
+//    glDisable(GL_TEXTURE_2D);
+//}
+
+
 void reshape(GLsizei w, GLsizei h) {
     glutReshapeWindow(window.w, window.h);   // Nao permite a alteracao de tamanho da janela
-}
-
-void loadTexture(void) {
-    texture = SOIL_load_OGL_texture(
-                    "image1.png",
-                    SOIL_LOAD_AUTO,
-                    SOIL_CREATE_NEW_ID,
-                    SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
-                    );
-
-    if(texture == 0)
-    {
-        printf("SOIL loading error: '%s'\n", SOIL_last_result());
-        exit(EXIT_FAILURE);
-    }
-
-    glBindTexture(GL_TEXTURE_2D, texture); 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-}
-
-void background(void) {
-
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, texture);  // Define a textura corrente
-
-    glBegin(GL_QUADS);
-        // TexCoord2i: Coord. dos pontos na textura
-        // Vertex2i: Coord. dos pontos no poligono
-        glTexCoord2i(0, 0); glVertex2i(0, 0);
-        glTexCoord2i(1, 0); glVertex2i(window.w, 0);
-        glTexCoord2i(1, 1); glVertex2i(window.w, window.h);
-        glTexCoord2i(0, 1); glVertex2i(0, window.h);
-    glEnd();
-    
-    glDisable(GL_TEXTURE_2D);
-}
-
-void drawShip(void) {
-    glColor3f(0.0f, 1.0f, 0.0f);
-    glBegin(GL_QUADS);
-        glVertex2i(ship.posX, ship.posY);
-        glVertex2i(ship.posX+ship.width, ship.posY);
-        glVertex2i(ship.posX+ship.width, ship.posY+ship.height-15);
-        glVertex2i(ship.posX, ship.posY+ship.height-15);
-    glEnd();
-    glBegin(GL_QUADS);
-        glVertex2i(ship.posX+5, ship.posY+ship.height-15);
-        glVertex2i(ship.posX+ship.width-5, ship.posY+ship.height-15);
-        glVertex2i(ship.posX+ship.width-5, ship.posY+ship.height-10);
-        glVertex2i(ship.posX+5, ship.posY+ship.height-10);
-    glEnd();
-    glBegin(GL_QUADS);
-        glVertex2i(ship.posX+(ship.width/2 - 5), ship.posY+ship.height-10);
-        glVertex2i(ship.posX+(ship.width/2 + 5), ship.posY+ship.height-10);
-        glVertex2i(ship.posX+(ship.width/2 + 5), ship.posY+ship.height-5);
-        glVertex2i(ship.posX+(ship.width/2 - 5), ship.posY+ship.height-5);
-    glEnd();
-    glBegin(GL_QUADS);
-        glVertex2i(ship.posX+(ship.width/2 - 1), ship.posY+ship.height-5);
-        glVertex2i(ship.posX+(ship.width/2 + 1), ship.posY+ship.height-5);
-        glVertex2i(ship.posX+(ship.width/2 + 1), ship.posY+ship.height);
-        glVertex2i(ship.posX+(ship.width/2 - 1), ship.posY+ship.height);
-    glEnd();  
 }
 
 void init(void) {
@@ -154,6 +131,39 @@ void init(void) {
     }
 }
 
+void drawShip(void) {
+    GLint h = 3 - ship.health;
+    
+    if (ship.health > 0) {
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glBegin(GL_QUADS);
+            glVertex2i(ship.posX, ship.posY+(h*5));
+            glVertex2i(ship.posX+ship.width, ship.posY+(h*5));
+            glVertex2i(ship.posX+ship.width, ship.posY+ship.height-15);
+            glVertex2i(ship.posX, ship.posY+ship.height-15);
+        glEnd();
+        glBegin(GL_QUADS);
+            glVertex2i(ship.posX+5, ship.posY+ship.height-15);
+            glVertex2i(ship.posX+ship.width-5, ship.posY+ship.height-15);
+            glVertex2i(ship.posX+ship.width-5, ship.posY+ship.height-10);
+            glVertex2i(ship.posX+5, ship.posY+ship.height-10);
+        glEnd();
+        glBegin(GL_QUADS);
+            glVertex2i(ship.posX+(ship.width/2 - 5), ship.posY+ship.height-10);
+            glVertex2i(ship.posX+(ship.width/2 + 5), ship.posY+ship.height-10);
+            glVertex2i(ship.posX+(ship.width/2 + 5), ship.posY+ship.height-5);
+            glVertex2i(ship.posX+(ship.width/2 - 5), ship.posY+ship.height-5);
+        glEnd();
+        glBegin(GL_QUADS);
+            glVertex2i(ship.posX+(ship.width/2 - 1), ship.posY+ship.height-5);
+            glVertex2i(ship.posX+(ship.width/2 + 1), ship.posY+ship.height-5);
+            glVertex2i(ship.posX+(ship.width/2 + 1), ship.posY+ship.height);
+            glVertex2i(ship.posX+(ship.width/2 - 1), ship.posY+ship.height);
+        glEnd();
+    }
+}
+
+
 void drawBullets(void) {
     glColor3f(1.0f, 1.0f, 1.0f);
     for (int i = 0; i < BULLET_AMOUNT; i++) {
@@ -163,6 +173,14 @@ void drawBullets(void) {
                 glVertex2i(bullets[i].x+BULLET_WIDTH, bullets[i].y);
                 glVertex2i(bullets[i].x+BULLET_WIDTH, bullets[i].y+BULLET_HEIGHT);
                 glVertex2i(bullets[i].x, bullets[i].y+BULLET_HEIGHT);
+            glEnd();
+        }
+        if (enemyBullets[i].active) {
+            glBegin(GL_QUADS);
+            glVertex2i(enemyBullets[i].x, enemyBullets[i].y);
+            glVertex2i(enemyBullets[i].x+BULLET_WIDTH, enemyBullets[i].y);
+            glVertex2i(enemyBullets[i].x+BULLET_WIDTH, enemyBullets[i].y+BULLET_HEIGHT);
+            glVertex2i(enemyBullets[i].x, enemyBullets[i].y+BULLET_HEIGHT);
             glEnd();
         }
     }
@@ -304,7 +322,7 @@ void drawAliens(void) {
 
 void display(void) {
     glClear(GL_COLOR_BUFFER_BIT);
-    background();                   // Carrega a imagem de fundo
+    //background();                   // Carrega a imagem de fundo
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
@@ -320,12 +338,12 @@ void display(void) {
     glFlush();
 }
 
-void moveBullet (void) {
+void movePlayerBullet (void) {
     // Spawn new bullet
     if (shoot == 1 && tickCount - lastShotTick >= BULLET_COOLDOWN) {
         for (int i = 0; i < BULLET_AMOUNT; i++) {
             if (bullets[i].active == 0) {
-                bullets[i] = {1, ship.posX+(ship.width/2 - BULLET_WIDTH/2), ship.posY+ship.height + BULLET_HEIGHT/2};
+                bullets[i] = {1, ship.posX+(ship.width/2 - BULLET_WIDTH/2), ship.posY+ship.height , BULLET_SPEED};
                 break;
             }
         }
@@ -335,8 +353,8 @@ void moveBullet (void) {
     
     // Move and remove bullets
     for (int i = 0; i < BULLET_AMOUNT; i++) {
-        if (bullets[i].active == 1) {
-            bullets[i].y = bullets[i].y + BULLET_SPEED;
+        if (bullets[i].active) {
+            bullets[i].y = bullets[i].y + bullets[i].speed;
             
             if (bullets[i].y > window.h) {
                 bullets[i].active = 0;
@@ -345,16 +363,58 @@ void moveBullet (void) {
     }
 }
 
+void moveAlienBullet (void) {
+    Alien a;
+    int j = 0;
+    
+    // Spawn new bullet
+    if (tickCount - lastEnemyShot >= ENEMY_BULLET_COOLDOWN) {
+        // ellect an alien to shoot
+        for (int i = 0; i < (sizeof(aliens)/sizeof(aliens[0])); i++) {
+            while (!aliens[i][j].alive) {
+                if (aliens[i][j].x - ship.posX >= -50 && aliens[i][j].x - ship.posX <= 50) {
+                    a = aliens[i][j];
+                    cout << i << " x " << j << endl;
+                }
+                j++;
+            }
+            if (aliens[i][j].x - ship.posX >= -50 && aliens[i][j].x - ship.posX <= 50) {
+                a = aliens[i][j];
+            }
+            j = 0;
+        }
+        
+        // shoot
+        for (int i = 0; i < BULLET_AMOUNT; i++) {
+            if (!enemyBullets[i].active) {
+                enemyBullets[i] = {1, a.x+(a.width/2 - BULLET_WIDTH/2), a.y, -BULLET_SPEED};
+                break;
+            }
+        }
+        lastEnemyShot = tickCount;
+    }
+    
+    // Move and remove bullets
+    for (int i = 0; i < BULLET_AMOUNT; i++) {
+        if (enemyBullets[i].active) {
+            enemyBullets[i].y = enemyBullets[i].y + enemyBullets[i].speed;
+            
+            if (enemyBullets[i].y < 0) {
+                enemyBullets[i].active = 0;
+            }
+        }
+    }
+}
+
+
 void moveAliens(void) {
     GLint switchDirection = 0;
-    
-    if (tickCount % 200 == 0) aliensYSpeed = -25;
     
     for (int i = 0; i < (sizeof(aliens)/sizeof(aliens[0])); i++) {
         for (int j = 0; j < (sizeof(aliens[i])/sizeof(aliens[i][0])); j++) {
             if (aliens[i][j].alive) {
                 aliens[i][j].x += aliensXSpeed;
-                if (aliensYSpeed != 0) aliens[i][j].y += aliensYSpeed;
+                aliens[i][j].y += aliensYSpeed;
             }
             
             if (aliens[i][j].x <= 0 || aliens[i][j].x + aliens[i][j].width + aliensXSpeed >= window.w) {
@@ -364,7 +424,10 @@ void moveAliens(void) {
     }
     
     aliensYSpeed = 0;
-    if (switchDirection) aliensXSpeed *= (-1);
+    if (switchDirection){
+        if (aliensXSpeed < 0) aliensYSpeed = -28;
+        aliensXSpeed *= (-1);
+    }
     
 }
 
@@ -409,6 +472,21 @@ GLint checkShipAlienCollision(void) {
     return 0;
 }
 
+void checkBulletShipCollision(void) {
+    for (int b = 0; b < BULLET_AMOUNT; b++) {
+        if (enemyBullets[b].active) {
+
+            // if bullet is inside ship boundaries
+            if (enemyBullets[b].x > ship.posX && enemyBullets[b].x < ship.posX + ship.width &&
+                enemyBullets[b].y > ship.posY && enemyBullets[b].y < ship.posY + ship.height) {
+                ship.health--;
+                enemyBullets[b].active = 0;
+            }
+
+        }
+    }
+}
+
 GLint alienInvasion(void) {
     for (int i = 0; i < (sizeof(aliens)/sizeof(aliens[0])); i++) {
         for (int j = 0; j < (sizeof(aliens[i])/sizeof(aliens[i][0])); j++) {
@@ -445,7 +523,7 @@ GLint checkEndGame(void) {
     }
     
     // Lose conditions
-    if (checkShipAlienCollision() || alienInvasion()) {
+    if (checkShipAlienCollision() || alienInvasion() || ship.health == 0) {
         lose = 1;
         cout << "You lose the game!" << endl;
         return 1;
@@ -458,9 +536,11 @@ void tick(GLint value) {
     if (!gameOver) {
         tickCount++;    
     
-        moveBullet();
+        movePlayerBullet();
         moveAliens();
+        moveAlienBullet();
         checkBulletAlienCollision();
+        checkBulletShipCollision();
     
         gameOver = checkEndGame();
     }
@@ -498,7 +578,7 @@ int main (int argc, char **argv) {
     glutCreateWindow("Projeto 2 - Space Invaders");
     
     init();
-    loadTexture();
+    //loadTexture();
 
     glutDisplayFunc(display);
     glutTimerFunc(33, tick, 0);
