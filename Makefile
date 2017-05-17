@@ -1,8 +1,8 @@
-CC = gcc
-CFLAGS =
+CC = g++
+CFLAGS = -std=c++11
 PROG = projeto2
 SRCS = projeto2.cpp
-LIBS = -lGLU -lGL -lglut -lm -pthread
+LIBS = -lGLU -lGL -lglut -lSOIL -lm -pthread
 
 all: $(PROG)
 

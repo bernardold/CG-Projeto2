@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <iostream>
+#include "SOIL.h"
 using namespace std;
 
 #define SPACEBAR 32
@@ -30,7 +31,6 @@ using namespace std;
 
 GLuint tickCount = 0;
 GLint gameOver = 0, win = 0, lose = 0;
-
 
 typedef struct {
     GLint active;
@@ -67,7 +67,77 @@ typedef struct {
 } Window;
 Window window = {1024, 640};
 
-void init() {
+GLuint texture = 0;
+
+void reshape(GLsizei w, GLsizei h) {
+    glutReshapeWindow(window.w, window.h);   // Nao permite a alteracao de tamanho da janela
+}
+
+void loadTexture(void) {
+    texture = SOIL_load_OGL_texture(
+                    "image1.png",
+                    SOIL_LOAD_AUTO,
+                    SOIL_CREATE_NEW_ID,
+                    SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
+                    );
+
+    if(texture == 0)
+    {
+        printf("SOIL loading error: '%s'\n", SOIL_last_result());
+        exit(EXIT_FAILURE);
+    }
+
+    glBindTexture(GL_TEXTURE_2D, texture); 
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+}
+
+void background(void) {
+
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture);  // Define a textura corrente
+
+    glBegin(GL_QUADS);
+        // TexCoord2i: Coord. dos pontos na textura
+        // Vertex2i: Coord. dos pontos no poligono
+        glTexCoord2i(0, 0); glVertex2i(0, 0);
+        glTexCoord2i(1, 0); glVertex2i(window.w, 0);
+        glTexCoord2i(1, 1); glVertex2i(window.w, window.h);
+        glTexCoord2i(0, 1); glVertex2i(0, window.h);
+    glEnd();
+    
+    glDisable(GL_TEXTURE_2D);
+}
+
+void drawShip(void) {
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glBegin(GL_QUADS);
+        glVertex2i(ship.posX, ship.posY);
+        glVertex2i(ship.posX+ship.width, ship.posY);
+        glVertex2i(ship.posX+ship.width, ship.posY+ship.height-15);
+        glVertex2i(ship.posX, ship.posY+ship.height-15);
+    glEnd();
+    glBegin(GL_QUADS);
+        glVertex2i(ship.posX+5, ship.posY+ship.height-15);
+        glVertex2i(ship.posX+ship.width-5, ship.posY+ship.height-15);
+        glVertex2i(ship.posX+ship.width-5, ship.posY+ship.height-10);
+        glVertex2i(ship.posX+5, ship.posY+ship.height-10);
+    glEnd();
+    glBegin(GL_QUADS);
+        glVertex2i(ship.posX+(ship.width/2 - 5), ship.posY+ship.height-10);
+        glVertex2i(ship.posX+(ship.width/2 + 5), ship.posY+ship.height-10);
+        glVertex2i(ship.posX+(ship.width/2 + 5), ship.posY+ship.height-5);
+        glVertex2i(ship.posX+(ship.width/2 - 5), ship.posY+ship.height-5);
+    glEnd();
+    glBegin(GL_QUADS);
+        glVertex2i(ship.posX+(ship.width/2 - 1), ship.posY+ship.height-5);
+        glVertex2i(ship.posX+(ship.width/2 + 1), ship.posY+ship.height-5);
+        glVertex2i(ship.posX+(ship.width/2 + 1), ship.posY+ship.height);
+        glVertex2i(ship.posX+(ship.width/2 - 1), ship.posY+ship.height);
+    glEnd();  
+}
+
+void init(void) {
     
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glMatrixMode(GL_PROJECTION);    // Especificoes de observacao de cena
@@ -84,11 +154,173 @@ void init() {
     }
 }
 
-void reshape(GLsizei w, GLsizei h) {
-    glutReshapeWindow(window.w, window.h);   // Nao permite a alteracao de tamanho da janela
+void drawBullets(void) {
+    glColor3f(1.0f, 1.0f, 1.0f);
+    for (int i = 0; i < BULLET_AMOUNT; i++) {
+        if (bullets[i].active) {
+            glBegin(GL_QUADS);
+                glVertex2i(bullets[i].x, bullets[i].y);
+                glVertex2i(bullets[i].x+BULLET_WIDTH, bullets[i].y);
+                glVertex2i(bullets[i].x+BULLET_WIDTH, bullets[i].y+BULLET_HEIGHT);
+                glVertex2i(bullets[i].x, bullets[i].y+BULLET_HEIGHT);
+            glEnd();
+        }
+    }
 }
 
-void moveBullet () {
+void drawAliens(void) {
+    for (int i = 0; i < (sizeof(aliens)/sizeof(aliens[0])); i++) {
+        for (int j = 0; j < (sizeof(aliens[i])/sizeof(aliens[i][0])); j++) {
+            if (aliens[i][j].alive) {
+                if (j == 0) {
+                    glColor3f(0.0f, 1.0f, 1.0f);
+                    glBegin(GL_TRIANGLES);
+                        glVertex2i(aliens[i][j].x+10, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-10, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+(aliens[i][j].width/2), aliens[i][j].y+15);
+                    glEnd();
+                    glBegin(GL_TRIANGLES);
+                        glVertex2i(aliens[i][j].x+5, aliens[i][j].y+10);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-5, aliens[i][j].y+10);
+                        glVertex2i(aliens[i][j].x+(aliens[i][j].width/2), aliens[i][j].y+aliens[i][j].height);
+                    glEnd();
+                    glColor3f(0.0f, 0.0f, 0.0f);
+                    glBegin(GL_TRIANGLES);
+                        glVertex2i(aliens[i][j].x+17, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-17, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+(aliens[i][j].width/2), aliens[i][j].y+7);
+                    glEnd();
+                    glPointSize(4.0);
+                    glBegin(GL_POINTS);
+                        glVertex2i(aliens[i][j].x+20, aliens[i][j].y+aliens[i][j].height-15);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-20, aliens[i][j].y+aliens[i][j].height-15);
+                    glEnd();
+                }
+                else if (j == 1) {
+                    glColor3f(1.0f, 0.0f, 1.0f);
+                    glBegin(GL_QUADS);
+                        glVertex2i(aliens[i][j].x, aliens[i][j].y+10);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width, aliens[i][j].y+10);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-5, aliens[i][j].y+aliens[i][j].height-10);
+                        glVertex2i(aliens[i][j].x+5, aliens[i][j].y+aliens[i][j].height-10);
+                    glEnd();
+                    glBegin(GL_QUADS);
+                        glVertex2i(aliens[i][j].x+15, aliens[i][j].y+aliens[i][j].height-10);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-15, aliens[i][j].y+aliens[i][j].height-10);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-15, aliens[i][j].y+aliens[i][j].height);
+                        glVertex2i(aliens[i][j].x+15, aliens[i][j].y+aliens[i][j].height);
+                    glEnd();
+                    glLineWidth(2);
+                    glBegin(GL_LINES);
+                        glVertex2i(aliens[i][j].x+10, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+10, aliens[i][j].y+10);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-10, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-10, aliens[i][j].y+10);
+                    glEnd();
+                    glColor3f(0.7f, 1.0f, 0.4f);
+                    glPointSize(4.0);
+                    glBegin(GL_POINTS);
+                        glVertex2i(aliens[i][j].x+20, aliens[i][j].y+aliens[i][j].height-15);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-20, aliens[i][j].y+aliens[i][j].height-15);
+                    glEnd();
+                }
+                else if (j == 2) {
+                    glColor3f(1.0f, 1.0f, 0.0f);
+                    glBegin(GL_TRIANGLE_FAN);
+                        glVertex2i(aliens[i][j].x+(aliens[i][j].width/2), aliens[i][j].y+(aliens[i][j].height/2));
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-5, aliens[i][j].y+aliens[i][j].height-10);
+                        glVertex2i(aliens[i][j].x+5, aliens[i][j].y+aliens[i][j].height-10);
+                    glEnd();
+                    glLineWidth(2);
+                    glBegin(GL_LINES);
+                        glVertex2i(aliens[i][j].x+10, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+15, aliens[i][j].y+20);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-12, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-10, aliens[i][j].y+10);
+                    glEnd();
+                    glColor3f(1.0f, 0.0f, 0.0f);
+                    glPointSize(5.0);
+                    glBegin(GL_POINTS);
+                        glVertex2i(aliens[i][j].x+40, aliens[i][j].y+aliens[i][j].height-15);
+                    glEnd();
+                }
+                else if (j == 3) {
+                    glColor3f(1.0f, 0.0f, 0.0f);
+                    glBegin(GL_TRIANGLES);
+                        glVertex2i(aliens[i][j].x+10, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-10, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+(aliens[i][j].width/2), aliens[i][j].y+15);
+                    glEnd();
+                    glBegin(GL_TRIANGLES);
+                        glVertex2i(aliens[i][j].x+5, aliens[i][j].y+10);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-5, aliens[i][j].y+10);
+                        glVertex2i(aliens[i][j].x+(aliens[i][j].width/2), aliens[i][j].y+aliens[i][j].height);
+                    glEnd();
+                    glColor3f(0.0f, 0.0f, 0.0f);
+                    glBegin(GL_TRIANGLES);
+                        glVertex2i(aliens[i][j].x+17, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-17, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+(aliens[i][j].width/2), aliens[i][j].y+7);
+                    glEnd();
+                    glPointSize(4.0);
+                    glBegin(GL_POINTS);
+                        glVertex2i(aliens[i][j].x+20, aliens[i][j].y+aliens[i][j].height-15);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-20, aliens[i][j].y+aliens[i][j].height-15);
+                    glEnd();
+                }
+                else if (j == 4) {
+                    glColor3f(0.0f, 0.0f, 1.0f);
+                    glBegin(GL_QUADS);
+                        glVertex2i(aliens[i][j].x, aliens[i][j].y+10);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width, aliens[i][j].y+10);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-5, aliens[i][j].y+aliens[i][j].height-10);
+                        glVertex2i(aliens[i][j].x+5, aliens[i][j].y+aliens[i][j].height-10);
+                    glEnd();
+                    glBegin(GL_QUADS);
+                        glVertex2i(aliens[i][j].x+15, aliens[i][j].y+aliens[i][j].height-10);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-15, aliens[i][j].y+aliens[i][j].height-10);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-15, aliens[i][j].y+aliens[i][j].height);
+                        glVertex2i(aliens[i][j].x+15, aliens[i][j].y+aliens[i][j].height);
+                    glEnd();
+                    glLineWidth(2);
+                    glBegin(GL_LINES);
+                        glVertex2i(aliens[i][j].x+10, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+10, aliens[i][j].y+10);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-10, aliens[i][j].y);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-10, aliens[i][j].y+10);
+                    glEnd();
+                    glColor3f(0.7f, 1.0f, 0.4f);
+                    glPointSize(4.0);
+                    glBegin(GL_POINTS);
+                        glVertex2i(aliens[i][j].x+20, aliens[i][j].y+aliens[i][j].height-15);
+                        glVertex2i(aliens[i][j].x+aliens[i][j].width-20, aliens[i][j].y+aliens[i][j].height-15);
+                    glEnd();
+                }
+            }
+        }      
+    }
+}
+
+void display(void) {
+    glClear(GL_COLOR_BUFFER_BIT);
+    background();                   // Carrega a imagem de fundo
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    drawShip();
+
+    drawBullets();
+
+    drawAliens();
+
+    glColor3f(1.0f, 1.0f, 1.0f);
+    
+    glutPostRedisplay();            // Chama a funcao DISPLAY apos a atualizacao
+    glFlush();
+}
+
+void moveBullet (void) {
     // Spawn new bullet
     if (shoot == 1 && tickCount - lastShotTick >= BULLET_COOLDOWN) {
         for (int i = 0; i < BULLET_AMOUNT; i++) {
@@ -113,10 +345,10 @@ void moveBullet () {
     }
 }
 
-void moveAliens() {
+void moveAliens(void) {
     GLint switchDirection = 0;
     
-    if (tickCount % 100 == 0) aliensYSpeed = -30;
+    if (tickCount % 200 == 0) aliensYSpeed = -25;
     
     for (int i = 0; i < (sizeof(aliens)/sizeof(aliens[0])); i++) {
         for (int j = 0; j < (sizeof(aliens[i])/sizeof(aliens[i][0])); j++) {
@@ -136,71 +368,7 @@ void moveAliens() {
     
 }
 
-void drawShip() {
-    glBegin(GL_QUADS);
-        glVertex2i(ship.posX, ship.posY);
-        glVertex2i(ship.posX+ship.width, ship.posY);
-        glVertex2i(ship.posX+ship.width, ship.posY+ship.height-15);
-        glVertex2i(ship.posX, ship.posY+ship.height-15);
-    glEnd();
-    glBegin(GL_QUADS);
-        glVertex2i(ship.posX+5, ship.posY+ship.height-15);
-        glVertex2i(ship.posX+ship.width-5, ship.posY+ship.height-15);
-        glVertex2i(ship.posX+ship.width-5, ship.posY+ship.height-10);
-        glVertex2i(ship.posX+5, ship.posY+ship.height-10);
-    glEnd();
-    glBegin(GL_QUADS);
-        glVertex2i(ship.posX+(ship.width/2 - 5), ship.posY+ship.height-10);
-        glVertex2i(ship.posX+(ship.width/2 + 5), ship.posY+ship.height-10);
-        glVertex2i(ship.posX+(ship.width/2 + 5), ship.posY+ship.height-5);
-        glVertex2i(ship.posX+(ship.width/2 - 5), ship.posY+ship.height-5);
-    glEnd();
-    glBegin(GL_QUADS);
-        glVertex2i(ship.posX+(ship.width/2 - 1), ship.posY+ship.height-5);
-        glVertex2i(ship.posX+(ship.width/2 + 1), ship.posY+ship.height-5);
-        glVertex2i(ship.posX+(ship.width/2 + 1), ship.posY+ship.height);
-        glVertex2i(ship.posX+(ship.width/2 - 1), ship.posY+ship.height);
-    glEnd();
-    
-}
-
-void drawBullets() {
-    for (int i = 0; i < BULLET_AMOUNT; i++) {
-        if (bullets[i].active) {
-            glBegin(GL_QUADS);
-                glVertex2i(bullets[i].x, bullets[i].y);
-                glVertex2i(bullets[i].x+BULLET_WIDTH, bullets[i].y);
-                glVertex2i(bullets[i].x+BULLET_WIDTH, bullets[i].y+BULLET_HEIGHT);
-                glVertex2i(bullets[i].x, bullets[i].y+BULLET_HEIGHT);
-            glEnd();
-            
-        }
-    }
-}
-
-
-void drawAliens() {
-    for (int i = 0; i < (sizeof(aliens)/sizeof(aliens[0])); i++) {
-        for (int j = 0; j < (sizeof(aliens[i])/sizeof(aliens[i][0])); j++) {
-            if (aliens[i][j].alive) {
-                glBegin(GL_QUADS);
-                    glVertex2i(aliens[i][j].x, aliens[i][j].y);
-                    glVertex2i(aliens[i][j].x+aliens[i][j].width, aliens[i][j].y);
-                    glVertex2i(aliens[i][j].x+aliens[i][j].width-5, aliens[i][j].y+aliens[i][j].height-10);
-                    glVertex2i(aliens[i][j].x+5, aliens[i][j].y+aliens[i][j].height-10);
-                glEnd();
-                glBegin(GL_QUADS);
-                    glVertex2i(aliens[i][j].x+15, aliens[i][j].y+aliens[i][j].height-10);
-                    glVertex2i(aliens[i][j].x+aliens[i][j].width-15, aliens[i][j].y+aliens[i][j].height-10);
-                    glVertex2i(aliens[i][j].x+aliens[i][j].width-15, aliens[i][j].y+aliens[i][j].height);
-                    glVertex2i(aliens[i][j].x+15, aliens[i][j].y+aliens[i][j].height);
-                glEnd();
-            }
-        }
-    }
-}
-
-void checkBulletAlienCollision() {
+void checkBulletAlienCollision(void) {
     for (int b = 0; b < BULLET_AMOUNT; b++) {
         if (bullets[b].active) {
             
@@ -214,7 +382,6 @@ void checkBulletAlienCollision() {
                             aliens[i][j].alive = 0;
                             bullets[b].active = 0;
                         }
-                        
                     }
                 }
             }
@@ -222,7 +389,7 @@ void checkBulletAlienCollision() {
     }
 }
 
-GLint checkShipAlienCollision() {
+GLint checkShipAlienCollision(void) {
     for (int i = 0; i < (sizeof(aliens)/sizeof(aliens[0])); i++) {
         for (int j = 0; j < (sizeof(aliens[i])/sizeof(aliens[i][0])); j++) {
             if (aliens[i][j].alive) {
@@ -242,7 +409,7 @@ GLint checkShipAlienCollision() {
     return 0;
 }
 
-GLint alienInvasion() {
+GLint alienInvasion(void) {
     for (int i = 0; i < (sizeof(aliens)/sizeof(aliens[0])); i++) {
         for (int j = 0; j < (sizeof(aliens[i])/sizeof(aliens[i][0])); j++) {
             if (aliens[i][j].alive) {
@@ -258,7 +425,7 @@ GLint alienInvasion() {
     return 0;
 }
 
-GLint anyAlienAlive() {
+GLint anyAlienAlive(void) {
     for (int i = 0; i < (sizeof(aliens)/sizeof(aliens[0])); i++) {
         for (int j = 0; j < (sizeof(aliens[i])/sizeof(aliens[i][0])); j++) {
             if (aliens[i][j].alive) {
@@ -269,7 +436,7 @@ GLint anyAlienAlive() {
     return 0;
 }
 
-GLint checkEndGame() {
+GLint checkEndGame(void) {
     // Win conditions
     if (!anyAlienAlive()){
         win = 1;
@@ -289,7 +456,7 @@ GLint checkEndGame() {
 
 void tick(GLint value) {
     if (!gameOver) {
-        tickCount++;
+        tickCount++;    
     
         moveBullet();
         moveAliens();
@@ -300,22 +467,6 @@ void tick(GLint value) {
     glutPostRedisplay();
     glutTimerFunc(33, tick, value);      // 30 frames per second
     
-}
-
-void display() {
-    glClear(GL_COLOR_BUFFER_BIT);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    
-    glColor3f(0.0f, 1.0f, 0.0f);
-    drawShip();
-    glColor3f(1.0f, 1.0f, 1.0f);
-    drawBullets();
-    glColor3f(1.0f, 1.0f, 1.0f);
-    drawAliens();
-    
-    glutPostRedisplay();    // Chama a funcao DISPLAY apos a atualizacao
-    glFlush();
 }
 
 void onKeyPress(unsigned char key, int x, int y) {
@@ -339,8 +490,7 @@ void onSpecialKeyPress(int key, int x, int y) {
     }
 }
 
-
-int main (int argc, char * argv[]) {
+int main (int argc, char **argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
     glutInitWindowSize(1024, 640);
@@ -348,13 +498,14 @@ int main (int argc, char * argv[]) {
     glutCreateWindow("Projeto 2 - Space Invaders");
     
     init();
-    
+    loadTexture();
+
     glutDisplayFunc(display);
     glutTimerFunc(33, tick, 0);
     glutReshapeFunc(reshape);
     glutKeyboardFunc(onKeyPress);
     glutSpecialFunc(onSpecialKeyPress);
     glutMainLoop();
-    
+
     return 0;
 }
